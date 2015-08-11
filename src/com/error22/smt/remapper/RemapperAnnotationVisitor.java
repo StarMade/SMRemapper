@@ -38,13 +38,13 @@ public class RemapperAnnotationVisitor extends AnnotationVisitor {
 					+ "important as it will allow this version to be improved!");
 			System.out.println("RemapAnnotationVisitor:visit("+clazz+") "+name+" "+value+"("+value.getClass()+")");
 		}
-		System.out.println("AnnotationVisitor:visit " + name + " "
-				+ value + " " + remapper.mapValue(value) + " "
-				+ value.getClass());
+//		System.out.println("AnnotationVisitor:visit " + name + " "
+//				+ value + " " + remapper.mapValue(value) + " "
+//				+ value.getClass());
 //		MD: obfuscated/nK/g ()V deobf/Class3386nK/method45427g ()V
 		
-		System.out.println("RemapAnnotationVisitor:visit("+clazz+") "+name+" "+value+"("+value.getClass()+")");
-		System.out.println(" "+(clazz+"/"+name+" ()"+Type.getDescriptor(value.getClass())));
+//		System.out.println("RemapAnnotationVisitor:visit("+clazz+") "+name+" "+value+"("+value.getClass()+")");
+//		System.out.println(" "+(clazz+"/"+name+" ()"+Type.getDescriptor(value.getClass())));
 		av.visit(remapper.mapMethodName(clazz, name, "()"+Type.getDescriptor(value.getClass())), value);
 	}
 	
@@ -64,7 +64,7 @@ public class RemapperAnnotationVisitor extends AnnotationVisitor {
 	@Override
 	public AnnotationVisitor visitArray(String name) {
 		if(clazz.startsWith("java/lang")){
-			System.out.println("RemapAnnotationVisitor:visitArray("+clazz+") '"+name+"' - Allowing as lang class");
+//			System.out.println("RemapAnnotationVisitor:visitArray("+clazz+") '"+name+"' - Allowing as lang class");
 			
 			AnnotationVisitor v = av.visitArray(name);
 			return v == av ? this : v == null ? null : new RemapperAnnotationVisitor(v, clazz);

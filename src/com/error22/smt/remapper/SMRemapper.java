@@ -47,6 +47,29 @@ public class SMRemapper extends Remapper {
 		JsonObject mappingsJson = new GsonBuilder().create().fromJson(
 				data.substring(data.indexOf(">") + 1), JsonObject.class);
 
+		JsonObject info = mappingsJson.getAsJsonObject("info");
+		System.out.println("    Mapping Info:");
+		System.out.println("        StarMade Build : "
+				+ info.getAsJsonPrimitive("build").getAsString());
+		System.out.println("        Mapping Version: "
+				+ info.getAsJsonPrimitive("version").getAsString());
+		System.out.println("        Mapping Date   : "
+				+ info.getAsJsonPrimitive("date").getAsString());
+		String creator = info.getAsJsonPrimitive("creator").getAsString();
+		System.out.println("        Mapping Creator: "
+				+ creator
+				+ " ("
+				+ (creator.equalsIgnoreCase("error22") ? "Official"
+						: "Unofficial") + ")");
+		if (!creator.equalsIgnoreCase("error22")) {
+			System.out
+					.println("        * WARNING * You are using an unofficial mapping file.");
+			System.out
+					.println("        * WARNING * This may cause issues, do not report any issues directly to SMT");
+			System.out
+					.println("        * WARNING * as it may be the mapping creators fault, ask them first!");
+		}
+
 		System.out.println("    Loading classes...");
 		classMap = new HashMap<String, String>();
 		JsonArray classesJson = mappingsJson.getAsJsonArray("classes");
@@ -143,8 +166,6 @@ public class SMRemapper extends Remapper {
 				continue;
 			}
 
-			System.out.println("        Remapping " + name);
-
 			if (name.endsWith(".class")) {
 				name = name.substring(0, name.length() - CLASS_LENGTH);
 				jarMap.put(name, entry);
@@ -173,9 +194,6 @@ public class SMRemapper extends Remapper {
 
 		System.out.println("    Second pass...");
 		for (Entry<String, JarEntry> e : jarMap.entrySet()) {
-
-			System.out.println("        Remapping " + e.getKey() + " >> "
-					+ map(e.getKey()));
 
 			ClassReader reader = new ClassReader(jar.getInputStream(e
 					.getValue()));
@@ -221,7 +239,7 @@ public class SMRemapper extends Remapper {
 	public ClassNode getClassSlow(String clazz) {
 		return classNodeMap.containsKey(clazz) ? classNodeMap.get(clazz) : null;
 	}
-	
+
 	public ClassNode getClassFast(String clazz) {
 		return classNodeMap.containsKey(clazz) ? classNodeMap.get(clazz) : null;
 	}
