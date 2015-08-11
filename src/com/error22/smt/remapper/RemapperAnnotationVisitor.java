@@ -6,7 +6,8 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
 /**
- * *This annotation visitor is not complete* 
+ * *This class is horrible and is not complete or working, this should not
+ * really be included in the repo yet but it is required * 
  * Due to asm remapping issues, annotations do not get correctly renamed.
  * The main issue is that the method names are not updated and it is hard
  * to remap the names as in some cases like arrays you do not know the

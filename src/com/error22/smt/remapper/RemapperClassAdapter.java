@@ -34,10 +34,10 @@ public class RemapperClassAdapter extends ClassVisitor {
 	@Override
 	public void visitInnerClass(String name, String outerName,
 			String innerName, int access) {
-		String newName = remapper.map(name);
-		String newOuterName = outerName != null ? remapper.map(outerName)
+		String newName = remapper.mapType(name);
+		String newOuterName = outerName != null ? remapper.mapType(outerName)
 				: null;
-		String newInnerName = outerName != null ? newName.substring(newName
+		String newInnerName = innerName != null ? newName.substring(newName
 				.lastIndexOf(newName.contains("$") ? '$' : '/') + 1) : null;
 
 		super.visitInnerClass(newName, newOuterName, newInnerName, access);
@@ -46,17 +46,18 @@ public class RemapperClassAdapter extends ClassVisitor {
 	@Override
 	public void visitOuterClass(String owner, String name, String desc) {
 		String newOwner = remapper.mapType(owner);
-		String newName = name != null ? remapper.mapMethodName(newOwner, name,
+		String newName = name != null ? remapper.mapMethodName(owner, name,
 				desc) : null;
 		String newDesc = desc != null ? remapper.mapMethodDesc(desc) : null;
 
-		super.visitOuterClass(owner, newName, newDesc);
+		super.visitOuterClass(newOwner, newName, newDesc);
 	}
 
 	@Override
 	public FieldVisitor visitField(int access, String name, String desc,
 			String signature, Object value) {
-		String newName = remapper.mapFieldName(className, name, desc);
+		String newName = remapper.mapFieldName(className, name, desc, access,
+				true);
 		String newDesc = remapper.mapDesc(desc);
 		String newSignature = remapper.mapSignature(signature, true);
 		Object newValue = remapper.mapValue(value);
@@ -68,22 +69,24 @@ public class RemapperClassAdapter extends ClassVisitor {
 	@Override
 	public MethodVisitor visitMethod(int access, String name, String desc,
 			String signature, String[] exceptions) {
-		String newName = remapper.mapMethodName(className, name, desc);
-		String newDesc = remapper.mapDesc(desc);
+		String newName = remapper.mapMethodName(className, name, desc, access,
+				true);
+		String newDesc = remapper.mapMethodDesc(desc);
 		String newSignature = remapper.mapSignature(signature, false);
 		String[] newExceptions = exceptions != null ? remapper
 				.mapTypes(exceptions) : null;
 
-		return super.visitMethod(access, newName, newDesc, newSignature,
-				newExceptions);
+		return new UnsortedRemappingMethodAdapter(access, newDesc,
+				super.visitMethod(access, newName, newDesc, newSignature,
+						newExceptions));
 	}
-	
+
 	@Override
 	public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
 		Type t = Type.getType(desc);
 
-//		System.out.println("visitAnnotation:MAIN  " + desc + "  " + visible
-//				+ " " + remapper.mapDesc(desc));
+		// System.out.println("visitAnnotation:MAIN  " + desc + "  " + visible
+		// + " " + remapper.mapDesc(desc));
 
 		if (t.getSort() == 10) {
 			AnnotationVisitor av;

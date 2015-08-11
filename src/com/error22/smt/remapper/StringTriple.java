@@ -1,11 +1,12 @@
 package com.error22.smt.remapper;
 
-public class StringPair {
-	private String a, b;
+public class StringTriple {
+	private String a, b, c;
 
-	public StringPair(String name, String desc) {
-		this.a = name;
-		this.b = desc;
+	public StringTriple(String a, String b, String c) {
+		this.a = a;
+		this.b = b;
+		this.c = c;
 	}
 
 	public String getA() {
@@ -15,13 +16,18 @@ public class StringPair {
 	public String getB() {
 		return b;
 	}
+	
+	public String getC() {
+		return c;
+	}
 
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((b == null) ? 0 : b.hashCode());
 		result = prime * result + ((a == null) ? 0 : a.hashCode());
+		result = prime * result + ((b == null) ? 0 : b.hashCode());
+		result = prime * result + ((c == null) ? 0 : c.hashCode());
 		return result;
 	}
 
@@ -33,23 +39,30 @@ public class StringPair {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		StringPair other = (StringPair) obj;
+		StringTriple other = (StringTriple) obj;
+		if (a == null) {
+			if (other.a != null)
+				return false;
+		} else if (!a.equals(other.a))
+			return false;
 		if (b == null) {
 			if (other.b != null)
 				return false;
 		} else if (!b.equals(other.b))
 			return false;
-		if (a == null) {
-			if (other.a != null)
+		if (c == null) {
+			if (other.c != null)
 				return false;
-		} else if (!a.equals(other.a))
+		} else if (!c.equals(other.c))
 			return false;
 		return true;
 	}
 
 	@Override
 	public String toString() {
-		return "FieldData [name=" + a + ", desc=" + b + "]";
+		return "StringTriple [a=" + a + ", b=" + b + ", c=" + c + "]";
 	}
+
+	
 
 }
