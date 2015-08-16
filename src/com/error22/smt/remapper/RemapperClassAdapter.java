@@ -6,6 +6,7 @@ import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import org.objectweb.asm.TypePath;
 
 public class RemapperClassAdapter extends ClassVisitor {
 	private String className;
@@ -76,23 +77,30 @@ public class RemapperClassAdapter extends ClassVisitor {
 		String[] newExceptions = exceptions != null ? remapper
 				.mapTypes(exceptions) : null;
 
-		return new UnsortedRemappingMethodAdapter(access, newDesc,
+		return new RemapperMethodAdapter(access, newDesc,
 				super.visitMethod(access, newName, newDesc, newSignature,
 						newExceptions));
+	}
+	
+	@Override
+	public AnnotationVisitor visitTypeAnnotation(int typeRef,
+			TypePath typePath, String desc, boolean visible) {
+		throw new RuntimeException("Not used!");
+//		return super.visitTypeAnnotation(typeRef, typePath, desc, visible);
 	}
 
 	@Override
 	public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
 		Type t = Type.getType(desc);
 
-		// System.out.println("visitAnnotation:MAIN  " + desc + "  " + visible
-		// + " " + remapper.mapDesc(desc));
+		 RemapperAnnotationVisitor.log("visitAnnotation:MAIN  " + desc + "  " + visible
+		 + " " + remapper.mapDesc(desc));
 
 		if (t.getSort() == 10) {
 			AnnotationVisitor av;
 			av = super.visitAnnotation(remapper.mapDesc(desc), visible);
 			return av == null ? null : new RemapperAnnotationVisitor(av,
-					t.getInternalName());
+					t.getInternalName(), className, visible);
 		} else {
 			throw new RuntimeException("Unsupported annotation desc " + desc
 					+ " !");

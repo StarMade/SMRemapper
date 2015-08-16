@@ -10,10 +10,10 @@ import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
 
-public class UnsortedRemappingMethodAdapter extends MethodVisitor {
+public class RemapperMethodAdapter extends MethodVisitor {
 	private SMRemapper remapper;
 
-	protected UnsortedRemappingMethodAdapter(int access, String desc,
+	protected RemapperMethodAdapter(int access, String desc,
 			MethodVisitor mv) {
 		super(Opcodes.ASM5, mv);
 		this.remapper = SMRemapper.INSTANCE;
@@ -78,7 +78,7 @@ public class UnsortedRemappingMethodAdapter extends MethodVisitor {
 
 	private int findAccess(boolean field, String owner, String name, String desc) {
 		int access = -1;
-		ClassNode clazz = remapper.getClassSlow(owner);
+		ClassNode clazz = remapper.getClass(owner);
 		if (clazz != null) {
 			if (field) {
 				for (FieldNode f : clazz.fields) {

@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.lang.reflect.Modifier;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -158,6 +159,7 @@ public class SMRemapper extends Remapper {
 		jarMap = new HashMap<String, JarEntry>();
 		classNodeMap = new HashMap<String, ClassNode>();
 		System.out.println("    First pass...");
+		loadLib("C:/Program Files (x86)/Java/jdk1.7.0_55/jre/lib/rt.jar");
 		for (Enumeration<JarEntry> entr = jar.entries(); entr.hasMoreElements();) {
 			JarEntry entry = entr.nextElement();
 			String name = entry.getName();
@@ -218,6 +220,32 @@ public class SMRemapper extends Remapper {
 		System.out.println("Complete!");
 	}
 
+	private void loadLib(String path) throws Exception {
+		JarFile libJar = new JarFile(path, false);
+
+		for (Enumeration<JarEntry> entr = libJar.entries(); entr
+				.hasMoreElements();) {
+			JarEntry entry = entr.nextElement();
+			String name = entry.getName();
+
+			if (entry.isDirectory()) {
+				continue;
+			}
+
+			if (name.endsWith(".class")) {
+				name = name.substring(0, name.length() - CLASS_LENGTH);
+
+				ClassReader cr = new ClassReader(libJar.getInputStream(entry));
+				ClassNode node = new ClassNode();
+				cr.accept(node, 0);
+
+				classNodeMap.put(name, node);
+			}
+		}
+
+		libJar.close();
+	}
+
 	@Override
 	public String map(String typeName) {
 		if (classMap.containsKey(typeName)) {
@@ -236,18 +264,14 @@ public class SMRemapper extends Remapper {
 		return typeName;
 	}
 
-	public ClassNode getClassSlow(String clazz) {
-		return classNodeMap.containsKey(clazz) ? classNodeMap.get(clazz) : null;
-	}
-
-	public ClassNode getClassFast(String clazz) {
+	public ClassNode getClass(String clazz) {
 		return classNodeMap.containsKey(clazz) ? classNodeMap.get(clazz) : null;
 	}
 
 	public String mapFieldName(String owner, String name, String desc,
 			int access, boolean base) {
 		StringTriple mapped = fieldMap.get(new StringTriple(owner, name, desc));
-		ClassNode clazz = getClassFast(owner);
+		ClassNode clazz = getClass(owner);
 
 		if (mapped != null) {
 			return mapped.getB();
@@ -274,7 +298,7 @@ public class SMRemapper extends Remapper {
 			int access, boolean base) {
 		StringTriple mapped = methodMap
 				.get(new StringTriple(owner, name, desc));
-		ClassNode clazz = getClassFast(owner);
+		ClassNode clazz = getClass(owner);
 
 		if (mapped != null) {
 			return mapped.getB();
