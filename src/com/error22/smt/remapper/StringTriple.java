@@ -16,7 +16,7 @@ public class StringTriple {
 	public String getB() {
 		return b;
 	}
-	
+
 	public String getC() {
 		return c;
 	}
@@ -62,7 +62,5 @@ public class StringTriple {
 	public String toString() {
 		return "StringTriple [a=" + a + ", b=" + b + ", c=" + c + "]";
 	}
-
-	
 
 }

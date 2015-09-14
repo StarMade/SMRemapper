@@ -13,8 +13,7 @@ import org.objectweb.asm.tree.MethodNode;
 public class RemapperMethodAdapter extends MethodVisitor {
 	private SMRemapper remapper;
 
-	protected RemapperMethodAdapter(int access, String desc,
-			MethodVisitor mv) {
+	protected RemapperMethodAdapter(int access, String desc, MethodVisitor mv) {
 		super(Opcodes.ASM5, mv);
 		this.remapper = SMRemapper.INSTANCE;
 	}
@@ -27,24 +26,19 @@ public class RemapperMethodAdapter extends MethodVisitor {
 
 	@Override
 	public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
-		AnnotationVisitor av = mv.visitAnnotation(remapper.mapDesc(desc),
-				visible);
+		AnnotationVisitor av = mv.visitAnnotation(remapper.mapDesc(desc), visible);
 		return av == null ? av : new RemappingAnnotationAdapter(av, remapper);
 	}
 
 	@Override
-	public AnnotationVisitor visitParameterAnnotation(int parameter,
-			String desc, boolean visible) {
-		AnnotationVisitor av = mv.visitParameterAnnotation(parameter,
-				remapper.mapDesc(desc), visible);
+	public AnnotationVisitor visitParameterAnnotation(int parameter, String desc, boolean visible) {
+		AnnotationVisitor av = mv.visitParameterAnnotation(parameter, remapper.mapDesc(desc), visible);
 		return av == null ? av : new RemappingAnnotationAdapter(av, remapper);
 	}
 
 	@Override
-	public void visitFrame(int type, int nLocal, Object[] local, int nStack,
-			Object[] stack) {
-		super.visitFrame(type, nLocal, remapEntries(nLocal, local), nStack,
-				remapEntries(nStack, stack));
+	public void visitFrame(int type, int nLocal, Object[] local, int nStack, Object[] stack) {
+		super.visitFrame(type, nLocal, remapEntries(nLocal, local), nStack, remapEntries(nStack, stack));
 	}
 
 	private Object[] remapEntries(int n, Object[] entries) {
@@ -56,8 +50,7 @@ public class RemapperMethodAdapter extends MethodVisitor {
 				}
 				do {
 					Object t = entries[i];
-					newEntries[i++] = t instanceof String ? remapper
-							.mapType((String) t) : t;
+					newEntries[i++] = t instanceof String ? remapper.mapType((String) t) : t;
 				} while (i < n);
 				return newEntries;
 			}
@@ -66,13 +59,9 @@ public class RemapperMethodAdapter extends MethodVisitor {
 	}
 
 	@Override
-	public void visitFieldInsn(int opcode, String owner, String name,
-			String desc) {
-		super.visitFieldInsn(
-				opcode,
-				remapper.mapType(owner),
-				remapper.mapFieldName(owner, name, desc,
-						findAccess(true, owner, name, desc), true),
+	public void visitFieldInsn(int opcode, String owner, String name, String desc) {
+		super.visitFieldInsn(opcode, remapper.mapType(owner),
+				remapper.mapFieldName(owner, name, desc, findAccess(true, owner, name, desc), true),
 				remapper.mapDesc(desc));
 	}
 
@@ -101,27 +90,20 @@ public class RemapperMethodAdapter extends MethodVisitor {
 	}
 
 	@Override
-	public void visitMethodInsn(int opcode, String owner, String name,
-			String desc, boolean itf) {
+	public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
 
-		super.visitMethodInsn(
-				opcode,
-				remapper.mapType(owner),
-				remapper.mapMethodName(owner, name, desc,
-						findAccess(false, owner, name, desc), true),
+		super.visitMethodInsn(opcode, remapper.mapType(owner),
+				remapper.mapMethodName(owner, name, desc, findAccess(false, owner, name, desc), true),
 				remapper.mapMethodDesc(desc), itf);
 	}
 
 	@Override
-	public void visitInvokeDynamicInsn(String name, String desc, Handle bsm,
-			Object... bsmArgs) {
+	public void visitInvokeDynamicInsn(String name, String desc, Handle bsm, Object... bsmArgs) {
 		for (int i = 0; i < bsmArgs.length; i++) {
 			bsmArgs[i] = remapper.mapValue(bsmArgs[i]);
 		}
-		super.visitInvokeDynamicInsn(
-				remapper.mapInvokeDynamicMethodName(name, desc),
-				remapper.mapMethodDesc(desc), (Handle) remapper.mapValue(bsm),
-				bsmArgs);
+		super.visitInvokeDynamicInsn(remapper.mapInvokeDynamicMethodName(name, desc), remapper.mapMethodDesc(desc),
+				(Handle) remapper.mapValue(bsm), bsmArgs);
 	}
 
 	@Override
@@ -140,16 +122,13 @@ public class RemapperMethodAdapter extends MethodVisitor {
 	}
 
 	@Override
-	public void visitTryCatchBlock(Label start, Label end, Label handler,
-			String type) {
-		super.visitTryCatchBlock(start, end, handler, type == null ? null
-				: remapper.mapType(type));
+	public void visitTryCatchBlock(Label start, Label end, Label handler, String type) {
+		super.visitTryCatchBlock(start, end, handler, type == null ? null : remapper.mapType(type));
 	}
 
 	@Override
-	public void visitLocalVariable(String name, String desc, String signature,
-			Label start, Label end, int index) {
-		super.visitLocalVariable(name, remapper.mapDesc(desc),
-				remapper.mapSignature(signature, true), start, end, index);
+	public void visitLocalVariable(String name, String desc, String signature, Label start, Label end, int index) {
+		super.visitLocalVariable(name, remapper.mapDesc(desc), remapper.mapSignature(signature, true), start, end,
+				index);
 	}
 }

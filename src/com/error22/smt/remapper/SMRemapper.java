@@ -6,7 +6,6 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.lang.reflect.Modifier;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -33,42 +32,34 @@ public class SMRemapper extends Remapper {
 	private HashMap<StringTriple, StringTriple> fieldMap, methodMap;
 	private HashMap<String, JarEntry> jarMap;
 	private JarFile jar;
+	private boolean keepSource;
 
-	public void init(File input, File output, File mapping, boolean reverse)
+	public void init(File input, File output, File mapping, File libsFolder, boolean reverse, boolean keepSource)
 			throws Exception {
+		this.keepSource = keepSource;
 		System.out.println("Loading mappings...");
 
 		String data = Files.toString(mapping, Charset.defaultCharset());
-		if (!data.substring(data.indexOf("<") + 1, data.indexOf(">")).equals(
-				"smtmap 1")) {
+		if (!data.substring(data.indexOf("<") + 1, data.indexOf(">")).equals("smtmap 1")) {
 			System.out.println("Unsupported mapping format!");
 			System.exit(0);
 		}
 
-		JsonObject mappingsJson = new GsonBuilder().create().fromJson(
-				data.substring(data.indexOf(">") + 1), JsonObject.class);
+		JsonObject mappingsJson = new GsonBuilder().create().fromJson(data.substring(data.indexOf(">") + 1),
+				JsonObject.class);
 
 		JsonObject info = mappingsJson.getAsJsonObject("info");
 		System.out.println("    Mapping Info:");
-		System.out.println("        StarMade Build : "
-				+ info.getAsJsonPrimitive("build").getAsString());
-		System.out.println("        Mapping Version: "
-				+ info.getAsJsonPrimitive("version").getAsString());
-		System.out.println("        Mapping Date   : "
-				+ info.getAsJsonPrimitive("date").getAsString());
+		System.out.println("        StarMade Build : " + info.getAsJsonPrimitive("build").getAsString());
+		System.out.println("        Mapping Version: " + info.getAsJsonPrimitive("version").getAsString());
+		System.out.println("        Mapping Date   : " + info.getAsJsonPrimitive("date").getAsString());
 		String creator = info.getAsJsonPrimitive("creator").getAsString();
-		System.out.println("        Mapping Creator: "
-				+ creator
-				+ " ("
-				+ (creator.equalsIgnoreCase("error22") ? "Official"
-						: "Unofficial") + ")");
+		System.out.println("        Mapping Creator: " + creator + " ("
+				+ (creator.equalsIgnoreCase("error22") ? "Official" : "Unofficial") + ")");
 		if (!creator.equalsIgnoreCase("error22")) {
-			System.out
-					.println("        * WARNING * You are using an unofficial mapping file.");
-			System.out
-					.println("        * WARNING * This may cause issues, do not report any issues directly to SMT");
-			System.out
-					.println("        * WARNING * as it may be the mapping creators fault, ask them first!");
+			System.out.println("        * WARNING * You are using an unofficial mapping file.");
+			System.out.println("        * WARNING * This may cause issues, do not report any issues directly to SMT");
+			System.out.println("        * WARNING * as it may be the mapping creators fault, ask them first!");
 		}
 
 		System.out.println("    Loading classes...");
@@ -114,8 +105,7 @@ public class SMRemapper extends Remapper {
 				newClass = temp;
 			}
 
-			fieldMap.put(new StringTriple(oldClass, oldName, oldDesc),
-					new StringTriple(newClass, newName, newDesc));
+			fieldMap.put(new StringTriple(oldClass, oldName, oldDesc), new StringTriple(newClass, newName, newDesc));
 		}
 
 		System.out.println("    Loading methods...");
@@ -144,14 +134,11 @@ public class SMRemapper extends Remapper {
 				newClass = temp;
 			}
 
-			methodMap.put(new StringTriple(oldClass, oldName, oldDesc),
-					new StringTriple(newClass, newName, newDesc));
+			methodMap.put(new StringTriple(oldClass, oldName, oldDesc), new StringTriple(newClass, newName, newDesc));
 		}
 
-		System.out.println("Remapping jar with " + classMap.size()
-				+ " class mappings, " + fieldMap.size()
-				+ " field mappings and " + methodMap.size()
-				+ " method mappings");
+		System.out.println("Remapping jar with " + classMap.size() + " class mappings, " + fieldMap.size()
+				+ " field mappings and " + methodMap.size() + " method mappings");
 
 		jar = new JarFile(input, false);
 		JarOutputStream out = new JarOutputStream(new FileOutputStream(output));
@@ -159,7 +146,11 @@ public class SMRemapper extends Remapper {
 		jarMap = new HashMap<String, JarEntry>();
 		classNodeMap = new HashMap<String, ClassNode>();
 		System.out.println("    First pass...");
-		loadLib("C:/Program Files (x86)/Java/jdk1.7.0_55/jre/lib/rt.jar");
+		File[] libs = libsFolder.listFiles();
+		for (File lib : libs) {
+			loadLib(lib);
+		}
+
 		for (Enumeration<JarEntry> entr = jar.entries(); entr.hasMoreElements();) {
 			JarEntry entry = entr.nextElement();
 			String name = entry.getName();
@@ -197,8 +188,7 @@ public class SMRemapper extends Remapper {
 		System.out.println("    Second pass...");
 		for (Entry<String, JarEntry> e : jarMap.entrySet()) {
 
-			ClassReader reader = new ClassReader(jar.getInputStream(e
-					.getValue()));
+			ClassReader reader = new ClassReader(jar.getInputStream(e.getValue()));
 			ClassNode node = new ClassNode();
 
 			RemapperClassAdapter mapper = new RemapperClassAdapter(node);
@@ -220,11 +210,10 @@ public class SMRemapper extends Remapper {
 		System.out.println("Complete!");
 	}
 
-	private void loadLib(String path) throws Exception {
+	private void loadLib(File path) throws Exception {
 		JarFile libJar = new JarFile(path, false);
 
-		for (Enumeration<JarEntry> entr = libJar.entries(); entr
-				.hasMoreElements();) {
+		for (Enumeration<JarEntry> entr = libJar.entries(); entr.hasMoreElements();) {
 			JarEntry entry = entr.nextElement();
 			String name = entry.getName();
 
@@ -268,8 +257,7 @@ public class SMRemapper extends Remapper {
 		return classNodeMap.containsKey(clazz) ? classNodeMap.get(clazz) : null;
 	}
 
-	public String mapFieldName(String owner, String name, String desc,
-			int access, boolean base) {
+	public String mapFieldName(String owner, String name, String desc, int access, boolean base) {
 		StringTriple mapped = fieldMap.get(new StringTriple(owner, name, desc));
 		ClassNode clazz = getClass(owner);
 
@@ -277,8 +265,7 @@ public class SMRemapper extends Remapper {
 			return mapped.getB();
 		} else if (checkParents(access) && clazz != null) {
 			if (clazz.superName != null) {
-				String map = mapFieldName(clazz.superName, name, desc, access,
-						false);
+				String map = mapFieldName(clazz.superName, name, desc, access, false);
 				if (map != null) {
 					return map;
 				}
@@ -294,18 +281,15 @@ public class SMRemapper extends Remapper {
 		return base ? name : null;
 	}
 
-	public String mapMethodName(String owner, String name, String desc,
-			int access, boolean base) {
-		StringTriple mapped = methodMap
-				.get(new StringTriple(owner, name, desc));
+	public String mapMethodName(String owner, String name, String desc, int access, boolean base) {
+		StringTriple mapped = methodMap.get(new StringTriple(owner, name, desc));
 		ClassNode clazz = getClass(owner);
 
 		if (mapped != null) {
 			return mapped.getB();
 		} else if (checkParents(access) && clazz != null) {
 			if (clazz.superName != null) {
-				String map = mapMethodName(clazz.superName, name, desc, access,
-						false);
+				String map = mapMethodName(clazz.superName, name, desc, access, false);
 				if (map != null) {
 					return map;
 				}
@@ -322,8 +306,7 @@ public class SMRemapper extends Remapper {
 	}
 
 	private boolean checkParents(int access) {
-		return access == -1
-				|| (!Modifier.isPrivate(access) && !Modifier.isStatic(access));
+		return access == -1 || (!Modifier.isPrivate(access) && !Modifier.isStatic(access));
 	}
 
 	@Override
@@ -336,23 +319,33 @@ public class SMRemapper extends Remapper {
 		return mapMethodName(owner, name, desc, 0, true);
 	}
 
+	public boolean shouldKeepSource() {
+		return keepSource;
+	}
+
 	public static void main(String[] args) throws Exception {
-		System.out.println("SMRemapper - Version 1.0");
+		System.out.println("SMRemapper - Version 1.1");
 		System.out.println("Made for SMT by Error22");
 		System.out.println();
 
-		if (args.length != 4) {
-			System.out
-					.println("Usage: java -jar SMRemapper.jar {input} {output} {mapping} {reverse}");
+		if (args.length != 6) {
+			System.out.println(
+					"Usage: java -jar SMRemapper.jar {input} {output} {libs folder} {mapping} {reverse (true/false)} {keep source (true/false)}");
+			System.out.println(
+					"Libs Folder: The libs folder must include the rt.jar(or classes on mac) file otherwise inheritance lookup will not work correctly!");
+			System.out.println(
+					"Remember: You will also need the StarMade.jar(or the deobf version) in the libs folder if you are only working with a partial jar (ie only contains changed files)");
 			System.exit(0);
 		}
 
 		File input = new File(args[0]);
 		File output = new File(args[1]);
 		File mapping = new File(args[2]);
-		boolean reverse = args[3].equalsIgnoreCase("true");
+		File libsFolder = new File(args[3]);
+		boolean reverse = args[4].equalsIgnoreCase("true");
+		boolean keepSource = args[5].equalsIgnoreCase("true");
 
 		INSTANCE = new SMRemapper();
-		INSTANCE.init(input, output, mapping, reverse);
+		INSTANCE.init(input, output, mapping, libsFolder, reverse, keepSource);
 	}
 }
