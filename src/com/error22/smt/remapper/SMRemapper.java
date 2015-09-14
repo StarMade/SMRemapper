@@ -330,7 +330,7 @@ public class SMRemapper extends Remapper {
 
 		if (args.length != 6) {
 			System.out.println(
-					"Usage: java -jar SMRemapper.jar {input} {output} {libs folder} {mapping} {reverse (true/false)} {keep source (true/false)}");
+					"Usage: java -jar SMRemapper.jar {input} {output} {mapping} {libs folder} {reverse (true/false)} {keep source (true/false)}");
 			System.out.println(
 					"Libs Folder: The libs folder must include the rt.jar(or classes on mac) file otherwise inheritance lookup will not work correctly!");
 			System.out.println(
