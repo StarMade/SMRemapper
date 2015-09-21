@@ -13,9 +13,9 @@ import org.objectweb.asm.tree.MethodNode;
 public class RemapperMethodAdapter extends MethodVisitor {
 	private SMRemapper remapper;
 
-	protected RemapperMethodAdapter(int access, String desc, MethodVisitor mv) {
+	protected RemapperMethodAdapter(SMRemapper remapper, int access, String desc, MethodVisitor mv) {
 		super(Opcodes.ASM5, mv);
-		this.remapper = SMRemapper.INSTANCE;
+		this.remapper = remapper;
 	}
 
 	@Override

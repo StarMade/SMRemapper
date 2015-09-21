@@ -12,9 +12,9 @@ public class RemapperClassAdapter extends ClassVisitor {
 	private String className;
 	private SMRemapper remapper;
 
-	protected RemapperClassAdapter(ClassVisitor cv) {
+	protected RemapperClassAdapter(SMRemapper remapper, ClassVisitor cv) {
 		super(Opcodes.ASM5, cv);
-		remapper = SMRemapper.INSTANCE;
+		this.remapper = remapper;
 	}
 
 	@Override
@@ -65,7 +65,7 @@ public class RemapperClassAdapter extends ClassVisitor {
 		String newSignature = remapper.mapSignature(signature, false);
 		String[] newExceptions = exceptions != null ? remapper.mapTypes(exceptions) : null;
 
-		return new RemapperMethodAdapter(access, newDesc,
+		return new RemapperMethodAdapter(remapper, access, newDesc,
 				super.visitMethod(access, newName, newDesc, newSignature, newExceptions));
 	}
 
@@ -84,7 +84,7 @@ public class RemapperClassAdapter extends ClassVisitor {
 		if (t.getSort() == 10) {
 			AnnotationVisitor av;
 			av = super.visitAnnotation(remapper.mapDesc(desc), visible);
-			return av == null ? null : new RemapperAnnotationVisitor(av, t.getInternalName(), className, visible);
+			return av == null ? null : new RemapperAnnotationVisitor(remapper, av, t.getInternalName(), className, visible);
 		} else {
 			throw new RuntimeException("Unsupported annotation desc " + desc + " !");
 		}

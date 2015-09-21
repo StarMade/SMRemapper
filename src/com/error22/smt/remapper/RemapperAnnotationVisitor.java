@@ -22,9 +22,9 @@ public class RemapperAnnotationVisitor extends AnnotationVisitor {
 	private AnnotationNode node;
 	private HashMap<String, Object> valueMap;
 
-	protected RemapperAnnotationVisitor(AnnotationVisitor av, String clazz, String ownerClazz, boolean visible) {
+	protected RemapperAnnotationVisitor(SMRemapper remapper, AnnotationVisitor av, String clazz, String ownerClazz, boolean visible) {
 		super(Opcodes.ASM5, av);
-		this.remapper = SMRemapper.INSTANCE;
+		this.remapper = remapper;
 		this.clazz = clazz;
 		this.ownerClazz = ownerClazz;
 		this.visible = visible;
@@ -137,7 +137,7 @@ public class RemapperAnnotationVisitor extends AnnotationVisitor {
 				+ remapper.mapMethodName(clazz, name, "()" + type));
 
 		AnnotationVisitor v = av.visitArray(remapper.mapMethodName(clazz, name, "()" + type));
-		return v == av ? this : v == null ? null : new RemapperAnnotationVisitor(v, clazz, ownerClazz, visible);
+		return v == av ? this : v == null ? null : new RemapperAnnotationVisitor(remapper, v, clazz, ownerClazz, visible);
 	}
 
 	public static void log(String msg) {

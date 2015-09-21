@@ -3,6 +3,7 @@ package com.error22.smt.remapper;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Modifier;
 import java.nio.charset.Charset;
@@ -26,44 +27,74 @@ import com.google.gson.JsonObject;
 
 public class SMRemapper extends Remapper {
 	public static final int CLASS_LENGTH = ".class".length();
-	public static SMRemapper INSTANCE;
 	private HashMap<String, String> classMap;
 	private HashMap<String, ClassNode> classNodeMap;
 	private HashMap<StringTriple, StringTriple> fieldMap, methodMap;
 	private HashMap<String, JarEntry> jarMap;
 	private JarFile jar;
 	private boolean keepSource;
+	private ILog log;
 
-	public void run(File input, File output, File mapping, File libsFolder, boolean reverse, boolean keepSource)
-			throws Exception {
-		this.keepSource = keepSource;
-		System.out.println("Loading mappings...");
+	public SMRemapper(ILog log) {
+		this.log = log;
+		classMap = new HashMap<String, String>();
+		fieldMap = new HashMap<StringTriple, StringTriple>();
+		methodMap = new HashMap<StringTriple, StringTriple>();
+		classNodeMap = new HashMap<String, ClassNode>();
+		jarMap = new HashMap<String, JarEntry>();
+	}
+
+	/**
+	 * Fully resets the remapper as if it has not been used.
+	 */
+	public void reset() {
+		resetMappings();
+		resetClasses();
+	}
+
+	/**
+	 * Resets any mappings loaded by loadMapping(...)
+	 */
+	public void resetMappings() {
+		classMap.clear();
+		fieldMap.clear();
+		methodMap.clear();
+	}
+
+	/**
+	 * Resets all class data caused by laodLib(...) or remap(...)
+	 */
+	public void resetClasses() {
+		classNodeMap.clear();
+		jarMap.clear();
+		jar = null;
+	}
+
+	/**
+	 * Loads the mappings, it can also reverse them. You can load multiple
+	 * mapping files, it will auto overwrite existing rules. A possible use
+	 * would be to load a raw_min file and then load a custom community file.
+	 * 
+	 * @param mapping
+	 *            The file to load
+	 * @param reverse
+	 *            If the mappings should be reversed
+	 * @throws IOException
+	 *             Normally if the mapping could not be read
+	 */
+	public void loadMapping(File mapping, boolean reverse) throws IOException {
+		log.log("Loading mappings...");
 
 		String data = Files.toString(mapping, Charset.defaultCharset());
 		if (!data.substring(data.indexOf("<") + 1, data.indexOf(">")).equals("smtmap 1")) {
-			System.out.println("Unsupported mapping format!");
-			System.exit(0);
+			log.log("Unsupported mapping format!");
+			throw new RuntimeException("Unsupported mapping format!");
 		}
 
 		JsonObject mappingsJson = new GsonBuilder().create().fromJson(data.substring(data.indexOf(">") + 1),
 				JsonObject.class);
 
-		JsonObject info = mappingsJson.getAsJsonObject("info");
-		System.out.println("    Mapping Info:");
-		System.out.println("        StarMade Build : " + info.getAsJsonPrimitive("build").getAsString());
-		System.out.println("        Mapping Version: " + info.getAsJsonPrimitive("version").getAsString());
-		System.out.println("        Mapping Date   : " + info.getAsJsonPrimitive("date").getAsString());
-		String creator = info.getAsJsonPrimitive("creator").getAsString();
-		System.out.println("        Mapping Creator: " + creator + " ("
-				+ (creator.equalsIgnoreCase("error22") ? "Official" : "Unofficial") + ")");
-		if (!creator.equalsIgnoreCase("error22")) {
-			System.out.println("        * WARNING * You are using an unofficial mapping file.");
-			System.out.println("        * WARNING * This may cause issues, do not report any issues directly to SMT");
-			System.out.println("        * WARNING * as it may be the mapping creators fault, ask them first!");
-		}
-
-		System.out.println("    Loading classes...");
-		classMap = new HashMap<String, String>();
+		log.log("    Loading classes...");
 		JsonArray classesJson = mappingsJson.getAsJsonArray("classes");
 		for (JsonElement elem : classesJson) {
 			JsonObject obj = (JsonObject) elem;
@@ -79,8 +110,7 @@ public class SMRemapper extends Remapper {
 			classMap.put(oldName, newName);
 		}
 
-		System.out.println("    Loading fields...");
-		fieldMap = new HashMap<StringTriple, StringTriple>();
+		log.log("    Loading fields...");
 		JsonArray fieldsJson = mappingsJson.getAsJsonArray("fields");
 		for (JsonElement elem : fieldsJson) {
 			JsonObject obj = (JsonObject) elem;
@@ -108,8 +138,7 @@ public class SMRemapper extends Remapper {
 			fieldMap.put(new StringTriple(oldClass, oldName, oldDesc), new StringTriple(newClass, newName, newDesc));
 		}
 
-		System.out.println("    Loading methods...");
-		methodMap = new HashMap<StringTriple, StringTriple>();
+		log.log("    Loading methods...");
 		JsonArray methodsJson = mappingsJson.getAsJsonArray("methods");
 		for (JsonElement elem : methodsJson) {
 			JsonObject obj = (JsonObject) elem;
@@ -136,25 +165,87 @@ public class SMRemapper extends Remapper {
 
 			methodMap.put(new StringTriple(oldClass, oldName, oldDesc), new StringTriple(newClass, newName, newDesc));
 		}
+	}
 
-		System.out.println("Remapping jar with " + classMap.size() + " class mappings, " + fieldMap.size()
-				+ " field mappings and " + methodMap.size() + " method mappings");
+	public void displayMappingInfo(File mapping) throws IOException {
+		String data = Files.toString(mapping, Charset.defaultCharset());
+		if (!data.substring(data.indexOf("<") + 1, data.indexOf(">")).equals("smtmap 1")) {
+			log.log("Unsupported mapping format!");
+			throw new RuntimeException("Unsupported mapping format!");
+		}
 
-		jar = new JarFile(input, false);
-		JarOutputStream out = new JarOutputStream(new FileOutputStream(output));
+		JsonObject mappingsJson = new GsonBuilder().create().fromJson(data.substring(data.indexOf(">") + 1),
+				JsonObject.class);
 
-		jarMap = new HashMap<String, JarEntry>();
-		classNodeMap = new HashMap<String, ClassNode>();
-		System.out.println("    First pass...");
-		File[] libs = libsFolder.listFiles();
-		for (File lib : libs) {
-			try{
-				loadLib(lib);
-			}catch(Exception e){
-				throw new Exception("Failed to load lib: "+lib.getAbsolutePath());
+		JsonObject info = mappingsJson.getAsJsonObject("info");
+
+		log.log("Mapping Info:");
+		log.log("    StarMade Build : " + info.getAsJsonPrimitive("build").getAsString());
+		log.log("    Mapping Version: " + info.getAsJsonPrimitive("version").getAsString());
+		log.log("    Mapping Date   : " + info.getAsJsonPrimitive("date").getAsString());
+		String creator = info.getAsJsonPrimitive("creator").getAsString();
+		log.log("    Mapping Creator: " + creator + " ("
+				+ (creator.equalsIgnoreCase("error22") ? "Official" : "Unofficial") + ")");
+		if (!creator.equalsIgnoreCase("error22")) {
+			log.log("    * WARNING * You are using an unofficial mapping file.");
+			log.log("    * WARNING * This may cause issues, do not report any issues directly to SMT");
+			log.log("    * WARNING * as it may be the mapping creators fault, ask them first!");
+		}
+	}
+
+	/**
+	 * Loads a library
+	 * 
+	 * @param path
+	 *            The library to load
+	 * @throws Exception
+	 *             Normally if the library is empty or corrupt
+	 */
+	public void loadLib(File path) throws Exception {
+		log.log("    Loading lib "+path.getPath()+"...");
+		JarFile libJar = new JarFile(path, false);
+
+		for (Enumeration<JarEntry> entr = libJar.entries(); entr.hasMoreElements();) {
+			JarEntry entry = entr.nextElement();
+			String name = entry.getName();
+
+			if (entry.isDirectory()) {
+				continue;
+			}
+
+			if (name.endsWith(".class")) {
+				name = name.substring(0, name.length() - CLASS_LENGTH);
+
+				ClassReader cr = new ClassReader(libJar.getInputStream(entry));
+				ClassNode node = new ClassNode();
+				cr.accept(node, 0);
+
+				classNodeMap.put(name, node);
 			}
 		}
 
+		libJar.close();
+	}
+
+	/**
+	 * Remaps the input to the output
+	 * 
+	 * @param input
+	 *            The file to use
+	 * @param output
+	 *            The non existent file to output to
+	 * @throws Exception
+	 *             Normally if something went seriously wrong
+	 */
+	public void remap(File input, File output) throws Exception {
+		log.log("Remapping jar with " + classMap.size() + " class mappings, " + fieldMap.size() + " field mappings and "
+				+ methodMap.size() + " method mappings");
+
+		jar = new JarFile(input, false);
+
+		JarOutputStream out = new JarOutputStream(new FileOutputStream(output));
+
+		log.log("    First pass...");
 		for (Enumeration<JarEntry> entr = jar.entries(); entr.hasMoreElements();) {
 			JarEntry entry = entr.nextElement();
 			String name = entry.getName();
@@ -189,13 +280,13 @@ public class SMRemapper extends Remapper {
 			}
 		}
 
-		System.out.println("    Second pass...");
+		log.log("    Second pass...");
 		for (Entry<String, JarEntry> e : jarMap.entrySet()) {
 
 			ClassReader reader = new ClassReader(jar.getInputStream(e.getValue()));
 			ClassNode node = new ClassNode();
 
-			RemapperClassAdapter mapper = new RemapperClassAdapter(node);
+			RemapperClassAdapter mapper = new RemapperClassAdapter(this, node);
 			reader.accept(mapper, 0);
 
 			ClassWriter wr = new ClassWriter(ClassWriter.COMPUTE_MAXS);
@@ -211,32 +302,15 @@ public class SMRemapper extends Remapper {
 		jar.close();
 		out.close();
 
-		System.out.println("Complete!");
+		log.log("Complete!");
 	}
 
-	private void loadLib(File path) throws Exception {
-		JarFile libJar = new JarFile(path, false);
+	public void setKeepSource(boolean keepSource) {
+		this.keepSource = keepSource;
+	}
 
-		for (Enumeration<JarEntry> entr = libJar.entries(); entr.hasMoreElements();) {
-			JarEntry entry = entr.nextElement();
-			String name = entry.getName();
-
-			if (entry.isDirectory()) {
-				continue;
-			}
-
-			if (name.endsWith(".class")) {
-				name = name.substring(0, name.length() - CLASS_LENGTH);
-
-				ClassReader cr = new ClassReader(libJar.getInputStream(entry));
-				ClassNode node = new ClassNode();
-				cr.accept(node, 0);
-
-				classNodeMap.put(name, node);
-			}
-		}
-
-		libJar.close();
+	public ILog getLog() {
+		return log;
 	}
 
 	@Override
@@ -327,8 +401,12 @@ public class SMRemapper extends Remapper {
 		return keepSource;
 	}
 
+	public static String getVersion() {
+		return "1.2 Alpha";
+	}
+
 	public static void main(String[] args) throws Exception {
-		System.out.println("SMRemapper - Version 1.1");
+		System.out.println("SMRemapper - Version " + getVersion());
 		System.out.println("Made for SMT by Error22");
 		System.out.println();
 
@@ -349,7 +427,31 @@ public class SMRemapper extends Remapper {
 		boolean reverse = args[4].equalsIgnoreCase("true");
 		boolean keepSource = args[5].equalsIgnoreCase("true");
 
-		INSTANCE = new SMRemapper();
-		INSTANCE.run(input, output, mapping, libsFolder, reverse, keepSource);
+		SMRemapper instance = new SMRemapper(new ILog() {
+			@Override
+			public void log(String text) {
+				System.out.println(text);
+			}
+		});
+
+		instance.setKeepSource(keepSource);
+		instance.loadMapping(mapping, reverse);
+
+		if (libsFolder == null || !libsFolder.exists()) {
+			System.out.println("Libs folder does not exist!");
+			System.exit(0);
+		}
+		
+		System.out.println("Loading libs...");
+		for (File lib : libsFolder.listFiles()) {
+			try {
+				instance.loadLib(lib);
+			} catch (Exception e) {
+				e.printStackTrace();
+				instance.getLog().log("Failed to load lib! " + lib.getPath() + " " + e.getMessage());
+			}
+		}
+
+		instance.remap(input, output);
 	}
 }
