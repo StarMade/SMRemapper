@@ -34,7 +34,7 @@ public class SMRemapper extends Remapper {
 	private JarFile jar;
 	private boolean keepSource;
 
-	public void init(File input, File output, File mapping, File libsFolder, boolean reverse, boolean keepSource)
+	public void run(File input, File output, File mapping, File libsFolder, boolean reverse, boolean keepSource)
 			throws Exception {
 		this.keepSource = keepSource;
 		System.out.println("Loading mappings...");
@@ -148,7 +148,11 @@ public class SMRemapper extends Remapper {
 		System.out.println("    First pass...");
 		File[] libs = libsFolder.listFiles();
 		for (File lib : libs) {
-			loadLib(lib);
+			try{
+				loadLib(lib);
+			}catch(Exception e){
+				throw new Exception("Failed to load lib: "+lib.getAbsolutePath());
+			}
 		}
 
 		for (Enumeration<JarEntry> entr = jar.entries(); entr.hasMoreElements();) {
@@ -346,6 +350,6 @@ public class SMRemapper extends Remapper {
 		boolean keepSource = args[5].equalsIgnoreCase("true");
 
 		INSTANCE = new SMRemapper();
-		INSTANCE.init(input, output, mapping, libsFolder, reverse, keepSource);
+		INSTANCE.run(input, output, mapping, libsFolder, reverse, keepSource);
 	}
 }
