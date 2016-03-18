@@ -1,6 +1,9 @@
 # SMRemapper
 A tool that reads .smmap's to deobfuscate and reobfuscate StarMade
 
+##No longer sustained - New program
+SMRemapper is no longer being developed and no support will be offered with it. A new project, [Lychee](https://github.com/Error22/Lychee) will replace this old setup once it is complete. Please follow the development of Lychee for more!
+
 ## Command Line
 Usage: java -jar SMRemapper.jar {input} {output} {mapping} {libs folder} {reverse (true/false)} {keep source (true/false)}
 
